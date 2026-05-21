@@ -1,0 +1,1726 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>留学工作室申请进程管理系统</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome 图标库 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Google Fonts: Inter & Noto Sans SC -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- Alpine.js 极简前端响应式框架 -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans SC', sans-serif;
+        }
+        /* 美化滚动条 */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        [x-cloak] { display: none !important; }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen text-slate-800" x-data="studioApp()">
+
+    <!-- 登录页面：未登录时展示 -->
+    <div x-show="!isLoggedIn" class="min-h-screen flex items-center justify-center bg-slate-900 py-12 px-4 sm:px-6 lg:px-8 bg-cover bg-center" style="background-image: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);">
+        <div class="max-w-md w-full space-y-8 bg-white/95 backdrop-blur-md p-8 rounded-3xl shadow-2xl border border-white/20">
+            <div>
+                <div class="mx-auto h-16 w-16 bg-gradient-to-tr from-indigo-600 to-violet-500 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                    <i class="fa-solid fa-graduation-cap text-3xl text-white"></i>
+                </div>
+                <h2 class="mt-6 text-center text-2xl font-bold tracking-tight text-slate-950">
+                    COCO 留学管理后台
+                </h2>
+                <p class="mt-2 text-center text-xs text-slate-500">
+                    请选择您的角色并登录系统
+                </p>
+            </div>
+
+            <!-- 角色选择 Tabs -->
+            <div class="bg-slate-100 p-1 rounded-xl flex items-center gap-1">
+                <button @click="loginForm.role = 'manager'" :class="loginForm.role === 'manager' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'" class="flex-1 text-center py-2 text-xs font-semibold rounded-lg transition-all duration-150">
+                    <i class="fa-solid fa-user-tie mr-1"></i> 管理人
+                </button>
+                <button @click="loginForm.role = 'teacher'" :class="loginForm.role === 'teacher' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'" class="flex-1 text-center py-2 text-xs font-semibold rounded-lg transition-all duration-150">
+                    <i class="fa-solid fa-user-graduate mr-1"></i> 合作老师
+                </button>
+                <button @click="loginForm.role = 'student'" :class="loginForm.role === 'student' ? 'bg-amber-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'" class="flex-1 text-center py-2 text-xs font-semibold rounded-lg transition-all duration-150">
+                    <i class="fa-solid fa-book-reader mr-1"></i> 学生
+                </button>
+            </div>
+
+            <!-- 登录表单 -->
+            <form class="mt-8 space-y-5" @submit.prevent="handleLogin()">
+                <div class="rounded-md space-y-4">
+                    <!-- 如果是老师或学生，需要输入名字 -->
+                    <template x-if="loginForm.role !== 'manager'">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1.5" x-text="loginForm.role === 'teacher' ? '老师姓名' : '学生姓名'"></label>
+                            <input type="text" x-model="loginForm.username" required :placeholder="loginForm.role === 'teacher' ? '请输入您的老师姓名' : '请输入您的学生姓名'" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all">
+                        </div>
+                    </template>
+
+                    <!-- 统一密码输入 -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1.5">
+                            登录密码 <span class="text-[10px] text-slate-400 font-normal" x-text="loginForm.role === 'manager' ? '(6位分配密码)'"></span>
+                        </label>
+                        <input type="password" x-model="loginForm.password" required placeholder="请输入登录密码" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all">
+                    </div>
+                </div>
+
+                <div>
+                    <button type="submit" :class="getRoleButtonColor()" class="group relative w-full flex justify-center py-3 px-4 text-sm font-semibold rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all duration-150 shadow-md">
+                        <span class="absolute left-0 inset-y-0 flex items-center pl-3">
+                            <i class="fa-solid fa-lock text-white/50 group-hover:text-white/80 transition"></i>
+                        </span>
+                        确认安全登录
+                    </button>
+                </div>
+            </form>
+
+            <!-- 快捷测试账号引导 -->
+            <div class="mt-6 border-t border-slate-100 pt-4">
+                <details class="group">
+                    <summary class="list-none flex justify-between items-center text-xs text-slate-400 cursor-pointer hover:text-slate-600 transition-colors">
+                        <span><i class="fa-regular fa-lightbulb mr-1 text-indigo-500 animate-pulse"></i> 快捷测试账号密码本</span>
+                        <i class="fa-solid fa-chevron-down text-[10px] group-open:rotate-180 transition-transform"></i>
+                    </summary>
+                    <div class="mt-3 bg-slate-50 rounded-xl p-3 text-[11px] text-slate-500 space-y-2 font-mono">
+                        <div>🔑 <strong class="text-indigo-600">工作室管理人</strong>: 密码 <span class="bg-indigo-50 text-indigo-700 px-1 py-0.5 rounded">920101</span></div>
+                        <div>👨‍🏫 <strong class="text-emerald-600">合作老师</strong> (输入老师姓名):
+                            <ul class="list-disc pl-5 mt-1 space-y-0.5">
+                                <li>王老师 | 密码: <span class="bg-slate-200 text-slate-800 px-1 py-0.5 rounded">111111</span></li>
+                                <li>李老师 | 密码: <span class="bg-slate-200 text-slate-800 px-1 py-0.5 rounded">222222</span></li>
+                            </ul>
+                        </div>
+                        <div>🎓 <strong class="text-amber-600">学 生</strong> (输入学生姓名):
+                            <ul class="list-disc pl-5 mt-1 space-y-0.5">
+                                <li>张伟 | 密码: <span class="bg-slate-200 text-slate-800 px-1 py-0.5 rounded">888888</span></li>
+                                <li>李娜 | 密码: <span class="bg-slate-200 text-slate-800 px-1 py-0.5 rounded">999999</span></li>
+                            </ul>
+                        </div>
+                    </div>
+                </details>
+            </div>
+        </div>
+    </div>
+
+    <!-- 主界面：已登录后展示 -->
+    <div x-show="isLoggedIn" x-cloak>
+        <header class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white shadow-lg sticky top-0 z-40">
+            <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
+                <!-- 品牌标识 -->
+                <div class="flex items-center gap-3">
+                    <div class="bg-indigo-600 p-2.5 rounded-xl shadow-md shadow-indigo-500/20">
+                        <i class="fa-solid fa-graduation-cap text-2xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-bold tracking-wide">COCO 留学管理后台</h1>
+                        <p class="text-xs text-slate-400">申请进程与协作结算平台</p>
+                    </div>
+                </div>
+
+                <!-- 模拟系统日期 -->
+                <div class="bg-slate-800/60 px-3 py-1.5 rounded-lg border border-slate-700/50 text-xs text-slate-300">
+                    <i class="fa-regular fa-calendar-days mr-1.5"></i>
+                    日期: <span class="font-semibold text-indigo-400" x-text="currentDateFormatted()"></span>
+                </div>
+
+                <!-- 当前登录身份展示与退出按钮 -->
+                <div class="flex items-center gap-3 bg-slate-800/80 p-1.5 px-3 rounded-xl border border-slate-700">
+                    <div class="text-xs">
+                        <span class="text-slate-400">当前登录: </span>
+                        <span class="font-bold" :class="getUserRoleBadgeColor()" x-text="getFormattedRoleName()"></span>
+                    </div>
+                    <div class="h-4 w-[1px] bg-slate-700"></div>
+                    <template x-if="currentRole === 'manager'">
+                        <button @click="openManagerPwdModal()" class="text-xs text-yellow-300 hover:text-yellow-200 font-semibold flex items-center gap-1 mr-2 transition-colors">
+                            <i class="fa-solid fa-key"></i> 修改密码
+                        </button>
+                    </template>
+                    <button @click="handleLogout()" class="text-xs text-rose-400 hover:text-rose-300 font-semibold flex items-center gap-1 transition-colors">
+                        <i class="fa-solid fa-power-off"></i> 退出
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- 主体内容 -->
+        <main class="max-w-7xl mx-auto px-4 py-8">
+
+            <!-- 统计面板（仅管理人可见） -->
+            <template x-if="currentRole === 'manager'">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8" x-transition>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-slate-500 font-medium">在管学生人数</p>
+                            <h3 class="text-2xl font-bold mt-1 text-slate-800" x-text="getUniqueStudentsCount()"></h3>
+                        </div>
+                        <div class="bg-blue-50 text-blue-600 p-4 rounded-xl"><i class="fa-solid fa-users text-xl"></i></div>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-slate-500 font-medium">紧急跟踪项目 (≤7天)</p>
+                            <h3 class="text-2xl font-bold mt-1 text-rose-600" x-text="getUrgentProjectsCount()"></h3>
+                        </div>
+                        <div class="bg-rose-50 text-rose-600 p-4 rounded-xl"><i class="fa-solid fa-fire text-xl"></i></div>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-slate-500 font-medium">文书交付进度</p>
+                            <h3 class="text-2xl font-bold mt-1 text-emerald-600" x-text="getDeliveryProgress()"></h3>
+                        </div>
+                        <div class="bg-emerald-50 text-emerald-600 p-4 rounded-xl"><i class="fa-solid fa-circle-check text-xl"></i></div>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-slate-500 font-medium">应付老师总额 (未结算)</p>
+                            <h3 class="text-2xl font-bold mt-1 text-indigo-600" x-text="'¥' + getTotalSettlement()"></h3>
+                            <p class="text-[10px] text-slate-400 mt-1" x-text="'已支付结算: ¥' + getPaidSettlement()"></p>
+                        </div>
+                        <div class="bg-indigo-50 text-indigo-600 p-4 rounded-xl"><i class="fa-solid fa-wallet text-xl"></i></div>
+                    </div>
+                </div>
+            </template>
+
+            <!-- 管理操作区（仅管理人可见） -->
+            <template x-if="currentRole === 'manager'">
+                <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+                    <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                        <span class="w-1.5 h-6 bg-indigo-600 rounded-full"></span>
+                        申请进程看板
+                    </h2>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <button @click="openStudentModal()" class="bg-white hover:bg-slate-50 text-slate-700 font-medium text-sm py-2 px-4 rounded-xl border border-slate-200 shadow-sm transition-all duration-150 flex items-center gap-2">
+                            <i class="fa-solid fa-users-gear text-indigo-500"></i> 管理学生
+                        </button>
+                        <button @click="openTeacherModal()" class="bg-white hover:bg-slate-50 text-slate-700 font-medium text-sm py-2 px-4 rounded-xl border border-slate-200 shadow-sm transition-all duration-150 flex items-center gap-2">
+                            <i class="fa-solid fa-user-gear text-emerald-500"></i> 管理合作老师
+                        </button>
+                        <button @click="openProjectModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm py-2 px-4 rounded-xl shadow-md shadow-indigo-500/10 transition-all duration-150 flex items-center gap-2">
+                            <i class="fa-solid fa-plus"></i> 新建申请项目
+                        </button>
+                    </div>
+                </div>
+            </template>
+
+            <!-- 看板非管理人标题 -->
+            <template x-if="currentRole !== 'manager'">
+                <div class="mb-6">
+                    <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                        <span class="w-1.5 h-6 bg-indigo-600 rounded-full"></span>
+                        申请项目一览表 <span class="text-xs font-normal text-slate-400" x-text="currentRole === 'student' ? '(仅展示您本人的申请与交付文档)' : '(仅展示分配给您的文书撰写任务)'"></span>
+                    </h2>
+                </div>
+            </template>
+
+            <!-- 高级交互筛选栏 -->
+            <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 mb-6 transition-all duration-300">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+                    <div class="flex items-center gap-2">
+                        <div class="bg-indigo-50 text-indigo-600 w-7 h-7 rounded-lg flex items-center justify-center">
+                            <i class="fa-solid fa-sliders text-xs"></i>
+                        </div>
+                        <h3 class="text-sm font-bold text-slate-800">
+                            申请看板条件筛选器
+                        </h3>
+                    </div>
+                    <button @click="resetFilters()" class="text-xs text-slate-500 hover:text-indigo-600 font-semibold transition-colors flex items-center gap-1.5 self-end sm:self-auto bg-slate-50 hover:bg-indigo-50/50 px-3 py-1.5 rounded-lg border border-slate-100">
+                        <i class="fa-solid fa-arrow-rotate-left"></i> 重置所有筛选
+                    </button>
+                </div>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                    <!-- 筛选项1：学生姓名 -->
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-500 mb-1.5">学生姓名</label>
+                        <input type="text" list="studentFilterOptions" x-model="filters.studentName" :disabled="currentRole === 'student'" placeholder="输入学生姓名筛选" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 transition-all disabled:opacity-60 disabled:cursor-not-allowed" />
+                        <datalist id="studentFilterOptions">
+                            <template x-for="st in students" :key="st.id">
+                                <option :value="st.name"></option>
+                            </template>
+                        </datalist>
+                    </div>
+
+                    <!-- 筛选项2：申请项目 -->
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-500 mb-1.5">目标院校项目</label>
+                        <div class="relative">
+                            <input type="text" x-model="filters.projectName" placeholder="搜索学校/项目关键字..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-indigo-500 focus:bg-white transition-all">
+                        </div>
+                    </div>
+
+                    <!-- 筛选项3：申请截止日期 -->
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-500 mb-1.5">截止日期不晚于</label>
+                        <div class="relative">
+                            <input type="date" x-model="filters.ddlMax" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:border-indigo-500 focus:bg-white transition-all">
+                        </div>
+                    </div>
+
+                    <!-- 筛选项4：剩X天截止 -->
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-500 mb-1.5">
+                            剩余截止倒计时 ≤ <span class="font-bold text-indigo-600" x-text="filters.daysLeftMax || '∞'"></span> 天
+                        </label>
+                        <div class="flex items-center gap-2">
+                            <input type="range" min="1" max="60" x-model="filters.daysLeftMax" class="flex-grow h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600">
+                            <button x-show="filters.daysLeftMax" @click="filters.daysLeftMax = ''" class="text-[10px] text-slate-400 hover:text-rose-500 font-bold" title="清除天数限制">清除</button>
+                        </div>
+                    </div>
+
+                    <!-- 筛选项5：负责老师 -->
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-500 mb-1.5">主导/负责老师</label>
+                        <input type="text" list="teacherFilterOptions" x-model="filters.teacherName" :disabled="currentRole === 'teacher'" placeholder="输入老师姓名筛选" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 transition-all disabled:opacity-60 disabled:cursor-not-allowed" />
+                        <datalist id="teacherFilterOptions">
+                            <template x-for="teacher in teachers" :key="teacher.id">
+                                <option :value="teacher.name"></option>
+                            </template>
+                        </datalist>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 核心表格容器 -->
+            <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden mb-8">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <!-- 表头 -->
+                        <thead>
+                            <tr class="bg-slate-50/75 text-slate-500 text-xs font-semibold border-b border-slate-100">
+                                <th class="py-4 px-6">学生姓名</th>
+                                <th class="py-4 px-6">申请项目</th>
+                                <th class="py-4 px-6">申请截止日期 (DDL)</th>
+                                <th class="py-4 px-6">倒计时 / 状态</th>
+                                <th class="py-4 px-6" style="min-width: 520px;">任务文档协作区 (个人文书 / 推荐信 / CV简历)</th>
+                            </tr>
+                        </thead>
+                        <!-- 表体 -->
+                        <tbody class="divide-y divide-slate-100">
+                            <template x-for="app in filteredApplications()" :key="app.id">
+                                <tr class="hover:bg-slate-50/50 transition-colors duration-150" :class="isUrgent(app.ddl) ? 'bg-rose-50/10' : ''">
+                                    <!-- 1. 学生姓名 -->
+                                    <td class="py-5 px-6">
+                                        <div class="font-semibold text-slate-800" x-text="app.studentName"></div>
+                                    </td>
+
+                                    <!-- 2. 申请项目 -->
+                                    <td class="py-5 px-6">
+                                        <div class="flex flex-col gap-1">
+                                            <div class="font-medium text-slate-800" x-text="app.projectName"></div>
+                                            <div class="flex items-center gap-2 mt-1">
+                                                <!-- 仅在管理人模式下，支持快捷修改项目信息和项目删除 -->
+                                                <template x-if="currentRole === 'manager'">
+                                                    <div class="flex items-center gap-1.5 ml-2">
+                                                        <span class="text-slate-200">|</span>
+                                                        <button @click="openProjectEditModal(app)" class="text-indigo-600 hover:text-indigo-800 text-[11px] font-medium flex items-center gap-0.5" title="修改项目名称与截止日期">
+                                                            <i class="fa-solid fa-pen-to-square text-[10px]"></i> 编辑
+                                                        </button>
+                                                        <span class="text-slate-200">|</span>
+                                                        <button @click="deleteProject(app)" class="text-rose-600 hover:text-rose-800 text-[11px] font-medium flex items-center gap-0.5" title="永久删除该项目进程">
+                                                            <i class="fa-solid fa-trash-can text-[10px]"></i> 删除
+                                                        </button>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </div>
+                                    </td>
+
+                                    <!-- 3. 截止时间 -->
+                                    <td class="py-5 px-6">
+                                        <div class="font-mono text-sm text-slate-700" x-text="app.ddl"></div>
+                                    </td>
+
+                                    <!-- 4. 倒计时/置顶标志 -->
+                                    <td class="py-5 px-6">
+                                        <div class="flex flex-col gap-1.5">
+                                            <!-- 置顶高亮标志 -->
+                                            <template x-if="isUrgent(app.ddl)">
+                                                <span class="inline-flex items-center gap-1 bg-rose-50 text-rose-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-rose-200 w-fit animate-pulse">
+                                                    <i class="fa-solid fa-triangle-exclamation"></i> 🚨紧急
+                                                </span>
+                                            </template>
+                                            <template x-if="!isUrgent(app.ddl)">
+                                                <span class="inline-flex items-center gap-1 bg-slate-100 text-slate-600 text-[10px] font-medium px-2 py-0.5 rounded-full border border-slate-200 w-fit">
+                                                    正常追踪
+                                                </span>
+                                            </template>
+                                            <!-- 倒计时计算 -->
+                                            <div class="text-xs text-slate-500 font-medium">
+                                                剩 <span class="font-bold text-sm" :class="isUrgent(app.ddl) ? 'text-rose-600' : 'text-slate-700'" x-text="getDaysLeft(app.ddl)"></span> 天截止
+                                            </div>
+                                        </div>
+                                    </td>
+
+                                    <!-- 5. 三行协作嵌套任务列 -->
+                                    <td class="py-5 px-6">
+                                        <div class="bg-slate-50 rounded-xl p-3 border border-slate-100 flex flex-col gap-2.5">
+                                            <template x-for="task in app.tasks" :key="task.id">
+                                                <!-- 单个任务行 -->
+                                                <div class="flex flex-wrap md:flex-nowrap items-center justify-between gap-3 bg-white p-2.5 rounded-lg border border-slate-100 hover:shadow-sm transition-shadow duration-150"
+                                                     x-show="shouldShowTask(task)">
+                                                    
+                                                    <!-- 任务类型 -->
+                                                    <div class="flex items-center gap-2 min-w-[120px]">
+                                                        <span class="w-1.5 h-3.5 rounded-full" :class="getTaskBadgeColor(task.type)"></span>
+                                                        <span class="text-xs font-semibold text-slate-700" x-text="task.typeName"></span>
+                                                    </div>
+
+                                                    <!-- 合作老师指派 -->
+                                                    <div class="text-xs text-slate-600 flex items-center gap-1.5 min-w-[130px]">
+                                                        <i class="fa-solid fa-user-pen text-slate-400"></i>
+                                                        <template x-if="currentRole === 'manager'">
+                                                            <!-- 管理人可修改分配老师 (可搜索下拉列表) -->
+                                                            <div class="relative">
+                                                                <input
+                                                                    type="text"
+                                                                    :list="'teacherList-' + task.id"
+                                                                    :value="task.teacher"
+                                                                    @change="updateTeacher(task, $event.target.value)"
+                                                                    placeholder="搜索并选择老师"
+                                                                    class="bg-slate-50 border border-slate-200 text-xs rounded-md px-2 py-1.5 focus:outline-none focus:border-indigo-500 transition-colors w-full"
+                                                                />
+                                                                <datalist :id="'teacherList-' + task.id">
+                                                                    <template x-for="teacher in teachers" :key="teacher.id">
+                                                                        <option :value="teacher.name"></option>
+                                                                    </template>
+                                                                </datalist>
+                                                            </div>
+                                                        </template>
+                                                        <template x-if="currentRole !== 'manager'">
+                                                            <!-- 非管理人仅展示 -->
+                                                            <span class="font-medium text-slate-700" x-text="task.teacher ? task.teacher : '待分配'"></span>
+                                                        </template>
+                                                    </div>
+
+                                                    <!-- 交付文件上传与下载 -->
+                                                    <div class="flex items-center gap-2 flex-grow justify-end">
+                                                        <!-- 如果已上传 -->
+                                                        <template x-if="task.fileUrl">
+                                                            <div class="flex items-center gap-2">
+                                                                <span class="text-[11px] text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded font-medium max-w-[120px] truncate" 
+                                                                      :title="task.fileName" 
+                                                                      x-text="task.fileName">
+                                                                </span>
+                                                                <!-- 预览按钮 -->
+                                                                <button @click="openPreview(task, app)" class="text-indigo-600 hover:text-indigo-800 text-xs font-medium hover:underline flex items-center gap-0.5">
+                                                                    <i class="fa-regular fa-eye"></i> 预览
+                                                                </button>
+                                                            </div>
+                                                        </template>
+                                                        <!-- 如果未上传 -->
+                                                        <template x-if="!task.fileUrl">
+                                                            <span class="text-xs text-slate-400 flex items-center gap-1">
+                                                                <i class="fa-regular fa-clock"></i> 待上传
+                                                            </span>
+                                                        </template>
+
+                                                        <!-- 当前登录老师为本任务的指派老师，或角色为管理人，有权上传/修改 -->
+                                                        <template x-if="currentRole === 'manager' || (currentRole === 'teacher' && task.teacher === loggedInUser.name)">
+                                                            <div class="ml-1">
+                                                                <label :for="'upload-' + task.id" class="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 px-2 py-1 rounded text-[11px] font-medium transition-colors flex items-center gap-1">
+                                                                    <i class="fa-solid fa-cloud-arrow-up text-slate-500"></i>
+                                                                    <span x-text="task.fileUrl ? '更新' : '上传PDF'"></span>
+                                                                </label>
+                                                                <input type="file" :id="'upload-' + task.id" accept="application/pdf" class="hidden" @change="handleFileUpload($event, task)">
+                                                            </div>
+                                                        </template>
+                                                    </div>
+
+                                                    <!-- 6. 结算金额与已结算状态 (联合管理，支持照片凭证约束) -->
+                                                    <template x-if="currentRole === 'manager' || (currentRole === 'teacher' && task.teacher === loggedInUser.name)">
+                                                        <div class="flex items-center flex-wrap md:flex-nowrap gap-3 border-l border-slate-200 pl-3 ml-1 min-w-[290px] justify-end">
+                                                            <!-- 结算金额 -->
+                                                            <div class="flex items-center gap-1">
+                                                                <span class="text-xs text-slate-400">💰 费用:</span>
+                                                                <template x-if="currentRole === 'manager'">
+                                                                    <div class="relative flex items-center">
+                                                                        <span class="absolute left-1.5 text-[10px] text-slate-400">¥</span>
+                                                                        <input type="number" 
+                                                                               x-model.number="task.settlement" 
+                                                                               @change="saveToStorage()"
+                                                                               class="w-14 bg-slate-50 border border-slate-200 text-xs rounded-md pl-4 pr-1 py-1 text-right focus:outline-none focus:border-indigo-500 focus:bg-white font-mono font-medium">
+                                                                    </div>
+                                                                </template>
+                                                                <template x-if="currentRole === 'teacher'">
+                                                                    <span class="font-mono font-semibold text-xs text-slate-700" x-text="'¥' + (task.settlement || 0)"></span>
+                                                                </template>
+                                                            </div>
+
+                                                            <!-- 是否已结算 -->
+                                                            <div class="flex items-center gap-1">
+                                                                <span class="text-xs text-slate-400">结算:</span>
+                                                                <!-- 管理人可以更改状态，但限制凭证上传 -->
+                                                                <template x-if="currentRole === 'manager'">
+                                                                    <select :value="task.isSettled ? 'yes' : 'no'" 
+                                                                            @change="handleSettlementChange(task, $event.target.value)"
+                                                                            class="bg-slate-50 border text-[11px] rounded-md px-1.5 py-0.5 focus:outline-none font-medium transition-colors"
+                                                                            :class="task.isSettled ? 'border-emerald-200 text-emerald-700 bg-emerald-50' : 'border-slate-200 text-slate-600'">
+                                                                        <option value="no">否</option>
+                                                                        <option value="yes">是</option>
+                                                                    </select>
+                                                                </template>
+                                                                <!-- 老师只读状态 -->
+                                                                <template x-if="currentRole === 'teacher'">
+                                                                    <span class="inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[10px] font-semibold"
+                                                                          :class="task.isSettled ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-slate-100 text-slate-500 border border-slate-200'">
+                                                                        <span x-text="task.isSettled ? '已结' : '未结'"></span>
+                                                                    </span>
+                                                                </template>
+                                                            </div>
+
+                                                            <!-- 付款凭证管理 -->
+                                                            <div class="flex items-center gap-1 min-w-[75px] justify-end">
+                                                                <!-- 有凭证：查看凭证 -->
+                                                                <template x-if="task.voucherUrl">
+                                                                    <button @click="openVoucherPreview(task, app)" 
+                                                                            class="text-emerald-600 hover:text-emerald-700 text-[11px] font-semibold flex items-center gap-0.5 bg-emerald-50 hover:bg-emerald-100/50 px-1 py-0.5 rounded transition-colors"
+                                                                            title="查看付款凭证照片">
+                                                                        <i class="fa-regular fa-image"></i> 凭证
+                                                                    </button>
+                                                                </template>
+
+                                                                <!-- 无凭证 且是 管理人：上传入口 -->
+                                                                <template x-if="!task.voucherUrl && currentRole === 'manager'">
+                                                                    <div>
+                                                                        <label :for="'voucher-upload-' + task.id" class="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-800 px-1 py-0.5 rounded text-[11px] font-medium transition-colors flex items-center gap-0.5" title="上传付款凭证图片">
+                                                                            <i class="fa-solid fa-camera"></i> 传图
+                                                                        </label>
+                                                                        <input type="file" :id="'voucher-upload-' + task.id" accept="image/*" class="hidden" @change="handleVoucherUpload($event, task)">
+                                                                    </div>
+                                                                </template>
+
+                                                                <!-- 无凭证 且是 老师 -->
+                                                                <template x-if="!task.voucherUrl && currentRole === 'teacher'">
+                                                                    <span class="text-[10px] text-slate-400">无凭证</span>
+                                                                </template>
+
+                                                                <!-- 管理人有权清除凭证 -->
+                                                                <template x-if="task.voucherUrl && currentRole === 'manager'">
+                                                                    <button @click="clearVoucher(task)" class="text-rose-500 hover:text-rose-700 text-[10px] ml-0.5" title="清除凭证">
+                                                                        <i class="fa-regular fa-trash-can"></i>
+                                                                    </button>
+                                                                </template>
+                                                            </div>
+                                                        </div>
+                                                    </template>
+
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- 空状态说明 -->
+                <template x-if="filteredApplications().length === 0">
+                    <div class="text-center py-12">
+                        <div class="bg-slate-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto text-slate-400 mb-3">
+                            <i class="fa-solid fa-folder-open text-xl"></i>
+                        </div>
+                        <p class="text-sm text-slate-500">此视图下暂无匹配的项目进程数据</p>
+                    </div>
+                </template>
+            </div>
+
+            <!-- 仅管理人可见：老师管理和费用汇总板块 -->
+            <template x-if="currentRole === 'manager'">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8" x-transition>
+                    
+                    <!-- 老师结算汇总 -->
+                    <section class="lg:col-span-2 bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-md font-bold text-slate-800 flex items-center gap-2">
+                                <i class="fa-solid fa-calculator text-indigo-500"></i>
+                                合作老师费用结算汇总清单
+                            </h3>
+                            <span class="text-xs text-slate-400">系统根据已登记老师与金额自动汇总统计</span>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <template x-for="summary in getTeacherSettlementSummaries()" :key="summary.teacher">
+                                <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <span class="text-sm font-semibold text-slate-700" x-text="summary.teacher"></span>
+                                        <span class="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-medium" x-text="'指派任务数: ' + summary.count"></span>
+                                    </div>
+                                    <div class="flex justify-between items-baseline mt-3">
+                                        <span class="text-xs text-slate-400">待结算 / 已支付</span>
+                                        <div class="text-right">
+                                            <span class="text-lg font-mono font-bold text-indigo-600" x-text="'¥' + summary.total"></span>
+                                            <span class="text-[10px] text-slate-400 block" x-text="'已结: ¥' + summary.settledTotal"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </section>
+
+                    <!-- 老师名册简易管理 -->
+                    <section class="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-md font-bold text-slate-800 flex items-center gap-2">
+                                    <i class="fa-solid fa-id-card-clip text-emerald-500"></i>
+                                    合作老师账户与凭证名册
+                                </h3>
+                                <button @click="openTeacherModal()" class="text-xs text-indigo-600 hover:text-indigo-800 font-bold">
+                                    <i class="fa-solid fa-gear"></i> 管理
+                                </button>
+                            </div>
+                            <div class="space-y-3 overflow-y-auto max-h-48 pr-1">
+                                <template x-for="teacher in teachers" :key="teacher.id">
+                                    <div class="flex justify-between items-center p-2.5 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-100 transition-colors">
+                                        <div>
+                                            <p class="text-xs font-bold text-slate-800" x-text="teacher.name"></p>
+                                            <p class="text-[10px] text-slate-400 mt-0.5" x-text="'ID: ' + teacher.id"></p>
+                                        </div>
+                                        <div class="text-right">
+                                            <span class="text-[11px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded font-mono font-semibold" x-text="'密码: ' + teacher.password"></span>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                        <div class="border-t border-slate-100 pt-4 mt-4">
+                            <p class="text-[10px] text-slate-400">说明：管理人可在名册中为合作老师分配、重置密码。登录系统后，老师们只能操作属于自己的文书任务并隐匿结算金额。</p>
+                        </div>
+                    </section>
+
+                </div>
+            </template>
+
+        </main>
+    </div>
+
+    <!-- ==================== 模态框组件 (Modals) ==================== -->
+
+    <!-- 1. 管理学生模态框（双栏结构：可新增、修改、手动分配密码） -->
+    <div x-show="isStudentModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm" x-cloak>
+        <div class="bg-white rounded-2xl w-full max-w-2xl p-6 shadow-2xl border border-slate-100 m-4 flex flex-col max-h-[85vh]" @click.away="isStudentModalOpen = false">
+            <div class="flex justify-between items-center mb-5 flex-shrink-0">
+                <h3 class="text-md font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-users-gear text-indigo-500"></i> 管理系统学生档案与账户名册
+                </h3>
+                <button @click="isStudentModalOpen = false" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <!-- 主表单与名册排版（分栏设计） -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 overflow-y-auto flex-grow pr-1 mb-4">
+                
+                <!-- 左侧：新增学生 / 编辑学生面板 -->
+                <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100 h-fit">
+                    <h4 class="text-xs font-bold text-slate-700 mb-4 flex items-center gap-1">
+                        <span class="w-1 h-3 bg-indigo-500 rounded-full"></span>
+                        <span x-text="isEditingStudent ? '修改学生账户资料' : '登记新的学生账号'"></span>
+                    </h4>
+                    <form @submit.prevent="saveStudentForm()">
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-500 mb-1.5">学生姓名 *</label>
+                                <input type="text" x-model="studentForm.name" required placeholder="例如：王小明" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 transition-all">
+                            </div>
+                            <div>
+                                <div class="flex justify-between items-center mb-1.5">
+                                    <label class="block text-xs font-semibold text-slate-500">设置6位数字密码 *</label>
+                                    <button type="button" @click="generateStudentPassword()" class="text-[10px] text-indigo-600 hover:underline font-semibold flex items-center gap-0.5">
+                                        <i class="fa-solid fa-arrows-rotate"></i> 随机生成
+                                    </button>
+                                </div>
+                                <input type="text" x-model="studentForm.password" required maxlength="6" minlength="6" placeholder="输入6位数字密码" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-mono focus:outline-none focus:border-indigo-500 transition-all">
+                            </div>
+                            <div class="flex gap-2 pt-2">
+                                <button type="submit" class="flex-1 px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-md shadow-indigo-500/10 transition" x-text="isEditingStudent ? '保存更新' : '登记并生成'"></button>
+                                <template x-if="isEditingStudent">
+                                    <button type="button" @click="cancelStudentEdit()" class="px-3 py-2 text-xs font-medium text-slate-500 bg-slate-200 hover:bg-slate-300 rounded-xl transition">取消</button>
+                                </template>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- 右侧：现有学生名册 -->
+                <div>
+                    <h4 class="text-xs font-bold text-slate-700 mb-3 flex items-center gap-1">
+                        <span class="w-1 h-3 bg-indigo-500 rounded-full"></span>
+                        已登记在册学生列表
+                    </h4>
+                    <div class="mb-3">
+                        <input type="text" x-model="studentSearch" placeholder="输入学生姓名筛选" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 transition-all" />
+                    </div>
+                    <div class="space-y-2.5 max-h-[45vh] overflow-y-auto pr-1">
+                        <template x-for="st in filteredStudents()" :key="st.id">
+                            <div class="bg-slate-50 hover:bg-slate-100 border border-slate-200/60 rounded-xl p-3 flex justify-between items-center transition-colors">
+                                <div>
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="text-xs font-bold text-slate-800" x-text="st.name"></span>
+                                    </div>
+                                    <div class="text-[10px] text-slate-500 mt-1 font-mono">
+                                        登录凭证：<span class="bg-indigo-50 text-indigo-700 font-semibold px-1.5 py-0.5 rounded" x-text="st.password"></span>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <button @click="startStudentEdit(st)" class="text-xs text-indigo-600 hover:text-indigo-800 bg-white hover:bg-indigo-50 border border-indigo-100 p-1.5 rounded-lg transition-colors" title="编辑资料/修改密码">
+                                        <i class="fa-solid fa-pen-to-square"></i>
+                                    </button>
+                                    <button @click="deleteStudent(st)" class="text-xs text-rose-600 hover:text-rose-800 bg-white hover:bg-rose-50 border border-rose-100 p-1.5 rounded-lg transition-colors" title="注销学生档案">
+                                        <i class="fa-solid fa-trash-can"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="flex justify-end flex-shrink-0 pt-3 border-t border-slate-100">
+                <button @click="isStudentModalOpen = false" class="px-5 py-2 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition">关闭档案中心</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. 新增与编辑申请项目通用模态框 -->
+    <div x-show="isProjectModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm" x-cloak>
+        <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl border border-slate-100 m-4" @click.away="closeProjectModal()">
+            <div class="flex justify-between items-center mb-5">
+                <h3 class="text-md font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid" :class="isEditingProject ? 'fa-pen-to-square text-indigo-500' : 'fa-folder-plus text-indigo-500'"></i> 
+                    <span x-text="isEditingProject ? '修改申请项目信息' : '关联新建申请项目'"></span>
+                </h3>
+                <button @click="closeProjectModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <form @submit.prevent="saveProjectForm()">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1.5">选择对应学生 *</label>
+                        <input
+                            type="text"
+                            list="projectStudents"
+                            x-model="projectStudentSearch"
+                            @input="syncProjectStudentBySearch()"
+                            placeholder="搜索并选择学生姓名"
+                            class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 transition-all"
+                            required
+                        />
+                        <datalist id="projectStudents">
+                            <template x-for="st in filteredProjectStudents()" :key="st.id">
+                                <option :value="st.name"></option>
+                            </template>
+                        </datalist>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1.5">申请项目名称 *</label>
+                        <input type="text" x-model="projectForm.name" required placeholder="例如：新加坡国立大学 - 计算机硕士 (MSc CS)" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 focus:bg-white transition-all">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1.5">申请截止日期 (DDL) *</label>
+                        <input type="date" x-model="projectForm.ddl" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 focus:bg-white transition-all">
+                        <span class="text-[10px] text-slate-400 mt-1 block font-medium">系统会自动将距离今天 (<span x-text="currentDateFormatted()"></span>) 7天内的到期日期标记为紧急并置顶。</span>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" @click="closeProjectModal()" class="px-4 py-2 text-xs font-medium text-slate-500 hover:bg-slate-50 rounded-xl transition">取消</button>
+                    <button type="submit" class="px-4 py-2 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-md shadow-indigo-500/10 transition" x-text="isEditingProject ? '确认修改' : '确认创建'"></button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 3. 管理合作老师模态框 -->
+    <div x-show="isTeacherModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm" x-cloak>
+        <div class="bg-white rounded-2xl w-full max-w-2xl p-6 shadow-2xl border border-slate-100 m-4 flex flex-col max-h-[85vh]" @click.away="isTeacherModalOpen = false">
+            <div class="flex justify-between items-center mb-5 flex-shrink-0">
+                <h3 class="text-md font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-user-gear text-emerald-500"></i> 管理系统合作老师账户名册
+                </h3>
+                <button @click="isTeacherModalOpen = false" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <!-- 主表单与名册排版（分栏设计） -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 overflow-y-auto flex-grow pr-1 mb-4">
+                
+                <!-- 左侧：新增老师 / 编辑老师面板 -->
+                <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100 h-fit">
+                    <h4 class="text-xs font-bold text-slate-700 mb-4 flex items-center gap-1">
+                        <span class="w-1 h-3 bg-emerald-500 rounded-full"></span>
+                        <span x-text="isEditingTeacher ? '修改合作老师资料' : '添加新的合作老师'"></span>
+                    </h4>
+                    <form @submit.prevent="saveTeacherForm()">
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-500 mb-1.5">老师姓名 *</label>
+                                <input type="text" x-model="teacherForm.name" required placeholder="例如：陈老师" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 transition-all">
+                            </div>
+                            <div>
+                                <div class="flex justify-between items-center mb-1.5">
+                                    <label class="block text-xs font-semibold text-slate-500">设置6位数字密码 *</label>
+                                    <button type="button" @click="generateTeacherPassword()" class="text-[10px] text-emerald-600 hover:underline font-semibold flex items-center gap-0.5">
+                                        <i class="fa-solid fa-arrows-rotate"></i> 随机生成
+                                    </button>
+                                </div>
+                                <input type="text" x-model="teacherForm.password" required maxlength="6" minlength="6" placeholder="输入6位数字密码" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-mono focus:outline-none focus:border-emerald-500 transition-all">
+                            </div>
+                            <div class="flex gap-2 pt-2">
+                                <button type="submit" class="flex-1 px-4 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-md shadow-emerald-500/10 transition" x-text="isEditingTeacher ? '保存更新' : '添加录入'"></button>
+                                <template x-if="isEditingTeacher">
+                                    <button type="button" @click="cancelTeacherEdit()" class="px-3 py-2 text-xs font-medium text-slate-500 bg-slate-200 hover:bg-slate-300 rounded-xl transition">取消</button>
+                                </template>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- 右侧：现有合作老师名册 -->
+                <div>
+                    <h4 class="text-xs font-bold text-slate-700 mb-3 flex items-center gap-1">
+                        <span class="w-1 h-3 bg-indigo-500 rounded-full"></span>
+                        已登记合作老师列表
+                    </h4>
+                    <div class="mb-3">
+                        <input type="text" x-model="teacherSearch" placeholder="输入老师姓名筛选" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 transition-all" />
+                    </div>
+                    <div class="space-y-2.5 max-h-[45vh] overflow-y-auto pr-1">
+                        <template x-for="teacher in filteredTeachers()" :key="teacher.id">
+                            <div class="bg-slate-50 hover:bg-slate-100 border border-slate-200/60 rounded-xl p-3 flex justify-between items-center transition-colors">
+                                <div>
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="text-xs font-bold text-slate-800" x-text="teacher.name"></span>
+                                        <span class="text-[9px] text-slate-400 font-mono" x-text="'(ID: ' + teacher.id + ')'"></span>
+                                    </div>
+                                    <div class="text-[10px] text-slate-500 mt-1 font-mono">
+                                        登录凭证：<span class="bg-indigo-50 text-indigo-700 font-semibold px-1.5 py-0.5 rounded" x-text="teacher.password"></span>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <button @click="startTeacherEdit(teacher)" class="text-xs text-indigo-600 hover:text-indigo-800 bg-white hover:bg-indigo-50 border border-indigo-100 p-1.5 rounded-lg transition-colors" title="编辑姓名/修改密码">
+                                        <i class="fa-solid fa-pen-to-square"></i>
+                                    </button>
+                                    <button @click="deleteTeacher(teacher)" class="text-xs text-rose-600 hover:text-rose-800 bg-white hover:bg-rose-50 border border-rose-100 p-1.5 rounded-lg transition-colors" title="删除老师">
+                                        <i class="fa-solid fa-trash-can"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="flex justify-end flex-shrink-0 pt-3 border-t border-slate-100">
+                <button @click="isTeacherModalOpen = false" class="px-5 py-2 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition">关闭管理中心</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 管理人密码修改模态框 -->
+    <div x-show="isManagerPwdModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm" x-cloak>
+        <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl border border-slate-100 m-4" @click.away="closeManagerPwdModal()">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-md font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-key text-yellow-500"></i> 修改管理人密码
+                </h3>
+                <button @click="closeManagerPwdModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <form @submit.prevent="saveManagerPassword()">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1.5">当前密码</label>
+                        <input type="password" x-model="managerPwdForm.current" required placeholder="输入当前密码" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300 transition-all">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1.5">新密码</label>
+                        <input type="password" x-model="managerPwdForm.new" required placeholder="请输入新密码（至少4位）" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300 transition-all">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1.5">确认新密码</label>
+                        <input type="password" x-model="managerPwdForm.confirm" required placeholder="请再次输入新密码" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300 transition-all">
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" @click="closeManagerPwdModal()" class="px-4 py-2 text-xs font-medium text-slate-500 hover:bg-slate-50 rounded-xl transition">取消</button>
+                    <button type="submit" class="px-4 py-2 text-xs font-medium text-white bg-yellow-500 hover:bg-yellow-600 rounded-xl shadow-md shadow-yellow-300/20 transition">保存修改</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 4. 高级文书 PDF 在线预览器 (支持真实PDF和模拟器界面) -->
+    <div x-show="isPreviewOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm" x-cloak>
+        <div class="bg-slate-950 rounded-2xl w-full max-w-5xl h-[85vh] flex flex-col shadow-2xl overflow-hidden m-4 border border-slate-800" @click.away="isPreviewOpen = false">
+            <!-- 预览器控制栏 -->
+            <div class="bg-slate-900 border-b border-slate-800 px-6 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="bg-rose-500/10 text-rose-500 p-2 rounded-lg">
+                        <i class="fa-regular fa-file-pdf text-xl"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-white text-sm font-semibold truncate max-w-md" x-text="previewData.fileName"></h4>
+                        <p class="text-[11px] text-slate-400 mt-0.5">
+                            关联申请人: <span class="text-slate-300" x-text="previewData.studentName"></span> | 
+                            任务类型: <span class="text-slate-300" x-text="previewData.taskTypeName"></span> | 
+                            合作老师: <span class="text-slate-300" x-text="previewData.teacher"></span>
+                        </p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <a :href="previewData.fileUrl" download class="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors">
+                        <i class="fa-solid fa-download"></i> 下载原件
+                    </a>
+                    <button @click="isPreviewOpen = false" class="text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 p-1.5 rounded-lg transition-colors">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 预览窗口主体 -->
+            <div class="flex-grow bg-slate-900 p-6 flex justify-center items-center overflow-auto">
+                
+                <!-- 场景 A：当用户上传了真正的 PDF，展示真实的 iframe/embed -->
+                <template x-if="previewData.isReal">
+                    <iframe :src="previewData.fileUrl" class="w-full h-full rounded-lg bg-white border-none shadow-inner"></iframe>
+                </template>
+
+                <!-- 场景 B：针对初始演示预存数据，进行高拟真度的文书 PDF 预览模拟器 -->
+                <template x-if="!previewData.isReal">
+                    <div class="bg-white w-full max-w-2xl min-h-[70vh] rounded-lg shadow-xl p-10 flex flex-col justify-between text-slate-800 select-none">
+                        <!-- 仿PDF抬头 -->
+                        <div>
+                            <div class="flex justify-between items-start border-b border-slate-200 pb-4 mb-6">
+                                <div>
+                                    <h2 class="text-2xl font-bold tracking-tight text-slate-900" x-text="previewData.studentName + ' 的 ' + previewData.taskTypeName"></h2>
+                                    <p class="text-xs text-slate-400 mt-1" x-text="'申请学校及项目: ' + previewData.projectName"></p>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-[10px] bg-indigo-50 text-indigo-700 px-2 py-1 rounded font-mono font-bold">CONFIDENTIAL</span>
+                                    <p class="text-[10px] text-slate-400 mt-1">Version 1.2 (Latest)</p>
+                                </div>
+                            </div>
+
+                            <!-- 正文 -->
+                            <div class="space-y-4">
+                                <h3 class="text-sm font-bold text-slate-950 uppercase tracking-wider">Letter of Intended Statement / Personal Statement (MOCKUP PREVIEW)</h3>
+                                <p class="text-xs leading-relaxed text-slate-600 text-justify">
+                                    I am writing to express my strong interest in the Master's Program. With my solid academic background in economics and finance, paired with hands-on quantitative research experience, I believe your prestigious institution is the ideal platform to further my professional development.
+                                </p>
+                                <p class="text-xs leading-relaxed text-slate-600 text-justify">
+                                    During my undergraduate studies, I focused on building advanced analytical skills. Under the mentorship of Professor Zhang, I completed a thesis on market liquidity analysis, applying Python algorithms and pandas libraries to analyze massive datasets. This invaluable research solidified my aspiration to master sophisticated financial modeling tools and theories.
+                                </p>
+                                <p class="text-xs leading-relaxed text-slate-600 text-justify">
+                                    Moreover, my internship at China International Capital Corporation (CICC) allowed me to apply theoretical framework into practice, assisting senior analysts with asset allocation strategies and client portfolio reports. This fast-paced professional environment proved my resilience and capacity for critical thinking under pressure...
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- 仿PDF落款 -->
+                        <div class="border-t border-slate-100 pt-6 mt-10 flex justify-between items-center text-[10px] text-slate-400">
+                            <div>
+                                <p>合作撰写老师：<span class="font-medium text-slate-600" x-text="previewData.teacher"></span></p>
+                                <p class="mt-0.5">EliteEdu Studio 独立知识产权保护</p>
+                            </div>
+                            <div class="font-mono">
+                                Page 1 of 1
+                            </div>
+                        </div>
+                    </div>
+                </template>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- 自定义通知提示框 (代替原生 alert) -->
+    <div class="fixed bottom-5 right-5 z-50 flex flex-col gap-3 max-w-sm pointer-events-none">
+        <template x-for="toast in toasts" :key="toast.id">
+            <div x-transition class="p-4 rounded-xl shadow-xl border text-xs font-semibold flex items-center gap-3 bg-white pointer-events-auto"
+                 :class="toast.type === 'success' ? 'border-emerald-200 text-emerald-800 bg-emerald-50/90' : 'border-rose-200 text-rose-800 bg-rose-50/90'">
+                <i class="fa-solid" :class="toast.type === 'success' ? 'fa-circle-check text-emerald-600' : 'fa-circle-exclamation text-rose-600'"></i>
+                <span x-text="toast.message"></span>
+            </div>
+        </template>
+    </div>
+
+    <!-- 5. 全局自定义安全确认对话框 (取代 window.confirm) -->
+    <div x-show="confirmModal.isOpen" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm" x-cloak>
+        <div class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl border border-slate-100 m-4" @click.away="confirmModal.isOpen = false">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center text-rose-600">
+                    <i class="fa-solid fa-triangle-exclamation text-lg"></i>
+                </div>
+                <div>
+                    <h3 class="text-sm font-bold text-slate-900" x-text="confirmModal.title"></h3>
+                    <p class="text-xs text-slate-500 mt-1" x-text="confirmModal.message"></p>
+                </div>
+            </div>
+            <div class="flex justify-end gap-2">
+                <button type="button" @click="confirmModal.isOpen = false" class="px-3 py-1.5 text-xs font-medium text-slate-500 hover:bg-slate-50 rounded-lg transition">取消</button>
+                <button type="button" @click="executeConfirmAction()" class="px-3 py-1.5 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-lg shadow-md shadow-rose-500/10 transition">确认执行</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 6. 付款凭证照片在线预览器 -->
+    <div x-show="isVoucherPreviewOpen" class="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm" x-cloak>
+        <div class="bg-white rounded-2xl w-full max-w-lg p-5 shadow-2xl border border-slate-100 m-4 flex flex-col" @click.away="isVoucherPreviewOpen = false">
+            <div class="flex justify-between items-center mb-4 pb-2 border-b border-slate-100">
+                <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                    <i class="fa-solid fa-receipt text-emerald-500"></i>
+                    付款凭证照片预览
+                </h3>
+                <button @click="isVoucherPreviewOpen = false" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="flex-grow flex justify-center items-center bg-slate-50 rounded-xl p-3 border border-dashed border-slate-200 overflow-hidden max-h-[60vh]">
+                <img :src="voucherPreviewData.url" alt="付款凭证" class="max-w-full max-h-[50vh] object-contain rounded-lg shadow-sm">
+            </div>
+            <div class="mt-4 flex flex-col gap-1 text-[11px] text-slate-500 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                <p><strong>学生姓名：</strong><span class="text-slate-700" x-text="voucherPreviewData.studentName"></span></p>
+                <p><strong>申请项目：</strong><span class="text-slate-700" x-text="voucherPreviewData.projectName"></span></p>
+                <p><strong>文书任务：</strong><span class="text-slate-700" x-text="voucherPreviewData.taskTypeName"></span></p>
+                <p><strong>撰写老师：</strong><span class="text-slate-700" x-text="voucherPreviewData.teacher"></span></p>
+                <p><strong>结算金额：</strong><span class="text-indigo-600 font-semibold font-mono" x-text="'¥' + voucherPreviewData.settlement"></span></p>
+            </div>
+            <div class="flex justify-end mt-4">
+                <a :href="voucherPreviewData.url" download class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs px-4 py-2 rounded-xl shadow-md shadow-indigo-500/10 transition-colors flex items-center gap-1.5 mr-2">
+                    <i class="fa-solid fa-download"></i> 下载原图
+                </a>
+                <button @click="isVoucherPreviewOpen = false" class="px-4 py-2 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function studioApp() {
+            return {
+                // 登录状态
+                isLoggedIn: false,
+                currentRole: '', // 最终的真实角色：'manager' | 'teacher' | 'student'
+                loggedInUser: null, // 当前登录用户的信息对象
+
+                // 登录表单
+                loginForm: {
+                    role: 'manager',
+                    username: '',
+                    password: ''
+                },
+
+                // 筛选状态
+                filters: {
+                    studentName: '',
+                    projectName: '',
+                    ddlMax: '',
+                    daysLeftMax: '',
+                    teacherName: ''
+                },
+
+                // 学生名册筛选
+                studentSearch: '',
+                // 新建项目学生筛选
+                projectStudentSearch: '',
+                // 老师名册筛选
+                teacherSearch: '',
+
+                // 弹窗控制
+                isStudentModalOpen: false,
+                isProjectModalOpen: false,
+                isTeacherModalOpen: false,
+                // 管理人密码修改模态
+                isManagerPwdModalOpen: false,
+                isPreviewOpen: false,
+                isVoucherPreviewOpen: false,
+
+                // 编辑状态
+                isEditingTeacher: false,
+                editingTeacherId: null,
+                isEditingStudent: false,
+                editingStudentId: null,
+                isEditingProject: false,
+                editingProjectId: null,
+
+                // 确认弹窗
+                confirmModal: {
+                    isOpen: false,
+                    title: '',
+                    message: '',
+                    action: null
+                },
+
+                // 通知
+                toasts: [],
+
+                // 表单数据
+                studentForm: { name: '', password: '' },
+                projectForm: { studentId: '', name: '', ddl: '' },
+                teacherForm: { name: '', password: '' },
+                // 管理人密码修改表单
+                managerPwdForm: { current: '', new: '', confirm: '' },
+
+                // 预览数据
+                previewData: {
+                    fileName: '',
+                    studentName: '',
+                    projectName: '',
+                    taskTypeName: '',
+                    teacher: '',
+                    fileUrl: '',
+                    isReal: false
+                },
+                voucherPreviewData: {
+                    url: '',
+                    studentName: '',
+                    projectName: '',
+                    taskTypeName: '',
+                    teacher: '',
+                    settlement: 0
+                },
+
+                // 核心数据
+                teachers: [],
+                students: [],
+                applications: [],
+                // 管理人账户（可变更密码并持久化）
+                manager: { password: '920101' },
+
+                init() {
+                    // 读取本地数据
+                    const savedTeachers = localStorage.getItem('elite_studio_teachers_v3');
+                    const savedStudents = localStorage.getItem('elite_studio_students_v3');
+                    const savedApps = localStorage.getItem('elite_studio_apps_v3');
+
+                    // 初始化老师
+                    if (savedTeachers) {
+                        this.teachers = JSON.parse(savedTeachers);
+                    } else {
+                        this.teachers = [
+                            { id: 1001, name: '王老师', password: '111111' },
+                            { id: 1002, name: '李老师', password: '222222' },
+                            { id: 1003, name: '张老师', password: '333333' }
+                        ];
+                        this.saveTeachersToStorage();
+                    }
+
+                    // 初始化学生
+                    if (savedStudents) {
+                        this.students = JSON.parse(savedStudents);
+                    } else {
+                        this.students = [
+                            { id: 2001, name: '张伟', password: '888888' },
+                            { id: 2002, name: '李娜', password: '999999' },
+                            { id: 2003, name: '陈静', password: '777777' }
+                        ];
+                        this.saveStudentsToStorage();
+                    }
+
+                    // 初始化申请项目
+                    if (savedApps) {
+                        this.applications = JSON.parse(savedApps);
+                    } else {
+                        this.applications = [
+                            {
+                                id: 1,
+                                studentName: '张伟',
+                                projectName: '香港大学 - 金融学硕士 (MSc Finance)',
+                                ddl: '2026-05-22',
+                                tasks: [
+                                    { id: 101, type: 'PS', typeName: '个人陈述文书', teacher: '王老师', fileUrl: 'mock_ps.pdf', fileName: 'Zhang_Wei_HKU_PS_v2.pdf', settlement: 1200, isSettled: true, voucherUrl: 'https://placehold.co/600x800/e0f2fe/0369a1?text=Payment+Voucher+¥1200', voucherName: 'hk_univ_ps_voucher.png' },
+                                    { id: 102, type: 'RL', typeName: '推荐信', teacher: '李老师', fileUrl: '', fileName: '', settlement: 500, isSettled: false, voucherUrl: '', voucherName: '' },
+                                    { id: 103, type: 'CV', typeName: '简历CV', teacher: '王老师', fileUrl: 'mock_cv.pdf', fileName: 'Zhang_Wei_HKU_CV_v1.pdf', settlement: 400, isSettled: false, voucherUrl: '', voucherName: '' }
+                                ]
+                            },
+                            {
+                                id: 2,
+                                studentName: '李娜',
+                                projectName: '新加坡国立大学 - 计算机硕士 (MSc CS)',
+                                ddl: '2026-06-15',
+                                tasks: [
+                                    { id: 104, type: 'PS', typeName: '个人陈述文书', teacher: '张老师', fileUrl: 'mock_ps.pdf', fileName: 'Li_Na_NUS_PS_Draft.pdf', settlement: 1500, isSettled: false, voucherUrl: '', voucherName: '' },
+                                    { id: 105, type: 'RL', typeName: '推荐信', teacher: '王老师', fileUrl: '', fileName: '', settlement: 600, isSettled: false, voucherUrl: '', voucherName: '' },
+                                    { id: 106, type: 'CV', typeName: '简历CV', teacher: '张老师', fileUrl: 'mock_cv.pdf', fileName: 'Li_Na_NUS_CV_Final.pdf', settlement: 400, isSettled: false, voucherUrl: '', voucherName: '' }
+                                ]
+                            },
+                            {
+                                id: 3,
+                                studentName: '陈静',
+                                projectName: '南洋理工大学 - 商业分析硕士 (MSc BA)',
+                                ddl: '2026-05-20',
+                                tasks: [
+                                    { id: 107, type: 'PS', typeName: '个人陈述文书', teacher: '王老师', fileUrl: '', fileName: '', settlement: 1200, isSettled: false, voucherUrl: '', voucherName: '' },
+                                    { id: 108, type: 'RL', typeName: '推荐信', teacher: '李老师', fileUrl: 'mock_rl.pdf', fileName: 'Chen_Jing_NTU_RL_Draft.pdf', settlement: 500, isSettled: false, voucherUrl: '', voucherName: '' },
+                                    { id: 109, type: 'CV', typeName: '简历CV', teacher: '王老师', fileUrl: '', fileName: '', settlement: 400, isSettled: false, voucherUrl: '', voucherName: '' }
+                                ]
+                            }
+                        ];
+                        this.saveToStorage();
+                    }
+
+                    // 初始化管理人密码（可被修改）
+                    const savedManager = localStorage.getItem('elite_studio_manager_v1');
+                    if (savedManager) {
+                        try { this.manager = JSON.parse(savedManager); } catch(e) { /* ignore */ }
+                    } else {
+                        this.saveManagerToStorage();
+                    }
+                },
+
+                // 通知提示
+                showNotification(message, type = 'success') {
+                    const id = Date.now();
+                    this.toasts.push({ id, message, type });
+                    setTimeout(() => {
+                        this.toasts = this.toasts.filter(t => t.id !== id);
+                    }, 3500);
+                },
+
+                // 确认对话框
+                triggerConfirm(title, message, callbackAction) {
+                    this.confirmModal.title = title;
+                    this.confirmModal.message = message;
+                    this.confirmModal.action = callbackAction;
+                    this.confirmModal.isOpen = true;
+                },
+                executeConfirmAction() {
+                    if (this.confirmModal.action) this.confirmModal.action();
+                    this.confirmModal.isOpen = false;
+                    this.confirmModal.action = null;
+                },
+
+                // 登录逻辑
+                handleLogin() {
+                    const { role, username, password } = this.loginForm;
+                    const pass = password.trim();
+                    const name = username.trim();
+
+                    if (role === 'manager') {
+                        if (pass === (this.manager && this.manager.password ? this.manager.password : '920101')) {
+                            this.currentRole = 'manager';
+                            this.loggedInUser = { name: '工作室管理人' };
+                            this.isLoggedIn = true;
+                            this.showNotification('工作室管理人登录成功！');
+                            this.resetFilters();
+                        } else {
+                            this.showNotification('管理人密码错误！', 'error');
+                        }
+                    } else if (role === 'teacher') {
+                        const teacher = this.teachers.find(t => t.name.trim() === name && t.password.trim() === pass);
+                        if (teacher) {
+                            this.currentRole = 'teacher';
+                            this.loggedInUser = teacher;
+                            this.isLoggedIn = true;
+                            this.showNotification(`${name} 老师，欢迎登录！`);
+                            this.resetFilters();
+                        } else {
+                            this.showNotification('老师信息不匹配！', 'error');
+                        }
+                    } else if (role === 'student') {
+                        const student = this.students.find(s => s.name.trim() === name && s.password.trim() === pass);
+                        if (student) {
+                            this.currentRole = 'student';
+                            this.loggedInUser = student;
+                            this.isLoggedIn = true;
+                            this.showNotification(`${name} 同学，欢迎登录！`);
+                            this.resetFilters();
+                        } else {
+                            this.showNotification('学生信息不匹配！', 'error');
+                        }
+                    }
+                },
+
+                // 退出登录
+                handleLogout() {
+                    this.isLoggedIn = false;
+                    this.currentRole = '';
+                    this.loggedInUser = null;
+                    this.loginForm.username = '';
+                    this.loginForm.password = '';
+                    this.resetFilters();
+                    this.showNotification('已安全退出');
+                },
+
+                // 重置筛选
+                resetFilters() {
+                    this.filters = {
+                        studentName: this.currentRole === 'student' ? this.loggedInUser.name : '',
+                        projectName: '',
+                        ddlMax: '',
+                        daysLeftMax: '',
+                        teacherName: this.currentRole === 'teacher' ? this.loggedInUser.name : ''
+                    };
+                },
+
+                // 样式工具
+                getUserRoleBadgeColor() {
+                    if (this.currentRole === 'manager') return 'text-indigo-400 font-extrabold';
+                    if (this.currentRole === 'teacher') return 'text-emerald-400 font-bold';
+                    if (this.currentRole === 'student') return 'text-amber-400 font-bold';
+                    return '';
+                },
+                getFormattedRoleName() {
+                    if (this.currentRole === 'manager') return '工作室管理人';
+                    if (this.currentRole === 'teacher') return `${this.loggedInUser.name} (合作老师)`;
+                    if (this.currentRole === 'student') return `${this.loggedInUser.name} (学生)`;
+                    return '';
+                },
+                getRoleButtonColor() {
+                    if (this.loginForm.role === 'manager') return 'bg-indigo-600 hover:bg-indigo-700';
+                    if (this.loginForm.role === 'teacher') return 'bg-emerald-600 hover:bg-emerald-700';
+                    if (this.loginForm.role === 'student') return 'bg-amber-600 hover:bg-amber-700';
+                    return '';
+                },
+                getTaskBadgeColor(type) {
+                    if (type === 'PS') return 'bg-indigo-600';
+                    if (type === 'RL') return 'bg-sky-500';
+                    if (type === 'CV') return 'bg-emerald-500';
+                    return 'bg-slate-400';
+                },
+
+                // 生成6位密码
+                generate6DigitPassword() {
+                    return Math.floor(100000 + Math.random() * 900000).toString();
+                },
+
+                // 过滤申请列表
+                filteredApplications() {
+                    let list = [...this.applications];
+
+                    // 权限过滤
+                    if (this.currentRole === 'student') {
+                        list = list.filter(a => a.studentName === this.loggedInUser.name);
+                    } else if (this.currentRole === 'teacher') {
+                        list = list.filter(a => a.tasks.some(t => t.teacher === this.loggedInUser.name));
+                    }
+
+                    // 筛选条件
+                    if (this.filters.studentName) {
+                        const studentKw = this.filters.studentName.trim().toLowerCase();
+                        list = list.filter(a => a.studentName.toLowerCase().includes(studentKw));
+                    }
+                    if (this.filters.projectName) {
+                        const kw = this.filters.projectName.toLowerCase();
+                        list = list.filter(a => a.projectName.toLowerCase().includes(kw));
+                    }
+                    if (this.filters.ddlMax) list = list.filter(a => new Date(a.ddl) <= new Date(this.filters.ddlMax));
+                    if (this.filters.daysLeftMax) {
+                        list = list.filter(a => this.getDaysLeft(a.ddl) <= Number(this.filters.daysLeftMax));
+                    }
+                    if (this.filters.teacherName) {
+                        const teacherKw = this.filters.teacherName.trim().toLowerCase();
+                        list = list.filter(a => a.tasks.some(t => t.teacher.toLowerCase().includes(teacherKw)));
+                    }
+
+                    // 排序：紧急优先 + 时间升序
+                    return list.map(a => ({
+                        ...a,
+                        urgent: this.isUrgent(a.ddl) ? 1 : 2,
+                        days: this.getDaysLeft(a.ddl)
+                    })).sort((a, b) => a.urgent - b.urgent || a.days - b.days);
+                },
+
+                // 计算剩余天数
+                getDaysLeft(ddlStr) {
+                    const today = new Date();
+                    const ddl = new Date(ddlStr);
+                    return Math.ceil((ddl - today) / (1000 * 60 * 60 * 24));
+                },
+                currentDateFormatted() {
+                    const today = new Date();
+                    const yyyy = today.getFullYear();
+                    const mm = String(today.getMonth() + 1).padStart(2, '0');
+                    const dd = String(today.getDate()).padStart(2, '0');
+                    return `${yyyy}-${mm}-${dd}`;
+                },
+                isUrgent(ddlStr) {
+                    const days = this.getDaysLeft(ddlStr);
+                    return days <= 7 && days >= 0;
+                },
+
+                // 老师只看自己任务
+                shouldShowTask(task) {
+                    return this.currentRole !== 'teacher' || task.teacher === this.loggedInUser.name;
+                },
+
+                // ========== 学生管理 ==========
+                openStudentModal() {
+                    this.isEditingStudent = false;
+                    this.editingStudentId = null;
+                    this.studentForm = { name: '', password: this.generate6DigitPassword() };
+                    this.isStudentModalOpen = true;
+                },
+                generateStudentPassword() {
+                    this.studentForm.password = this.generate6DigitPassword();
+                },
+                saveStudentForm() {
+                    const { name, password } = this.studentForm;
+                    if (!name || password.length !== 6) {
+                        this.showNotification('请填写完整信息', 'error');
+                        return;
+                    }
+
+                    if (this.isEditingStudent) {
+                        const old = this.students.find(s => s.id === this.editingStudentId);
+                        this.students = this.students.map(s => 
+                            s.id === this.editingStudentId ? { ...s, name, password } : s
+                        );
+                        if (old.name !== name) {
+                            this.applications.forEach(a => {
+                                if (a.studentName === old.name) {
+                                    a.studentName = name;
+                                }
+                            });
+                        }
+                        this.showNotification('学生信息已更新');
+                    } else {
+                        if (this.students.some(s => s.name === name)) {
+                            this.showNotification('学生已存在', 'error');
+                            return;
+                        }
+                        const id = Date.now();
+                        this.students.push({ id, name, password });
+                        // 自动创建项目
+                        this.applications.push({
+                            id: id + 10,
+                            studentName: name,
+                            projectName: '待配置院校项目',
+                            ddl: '2026-06-30',
+                            tasks: [
+                                { id: id+11, type: 'PS', typeName: '个人陈述文书', teacher: '', fileUrl: '', fileName: '', settlement: 0, isSettled: false, voucherUrl: '' },
+                                { id: id+12, type: 'RL', typeName: '推荐信', teacher: '', fileUrl: '', fileName: '', settlement: 0, isSettled: false, voucherUrl: '' },
+                                { id: id+13, type: 'CV', typeName: '简历CV', teacher: '', fileUrl: '', fileName: '', settlement: 0, isSettled: false, voucherUrl: '' }
+                            ]
+                        });
+                        this.showNotification(`学生 ${name} 添加成功`);
+                    }
+
+                    this.saveStudentsToStorage();
+                    this.saveToStorage();
+                    this.cancelStudentEdit();
+                },
+                startStudentEdit(s) {
+                    this.isEditingStudent = true;
+                    this.editingStudentId = s.id;
+                    this.studentForm = { name: s.name, password: s.password };
+                },
+                cancelStudentEdit() {
+                    this.isEditingStudent = false;
+                    this.editingStudentId = null;
+                    this.studentForm = { name: '', password: this.generate6DigitPassword() };
+                },
+                filteredStudents() {
+                    if (!this.studentSearch) return this.students;
+                    const keyword = this.studentSearch.trim().toLowerCase();
+                    return this.students.filter(st => st.name.toLowerCase().includes(keyword));
+                },
+                syncProjectStudentBySearch() {
+                    const matched = this.students.find(st => st.name.toLowerCase() === (this.projectStudentSearch || '').trim().toLowerCase());
+                    this.projectForm.studentId = matched ? matched.id : '';
+                },
+                filteredProjectStudents() {
+                    if (!this.projectStudentSearch) return this.students;
+                    const keyword = this.projectStudentSearch.trim().toLowerCase();
+                    return this.students.filter(st => st.name.toLowerCase().includes(keyword));
+                },
+                filteredTeachers() {
+                    if (!this.teacherSearch) return this.teachers;
+                    const keyword = this.teacherSearch.trim().toLowerCase();
+                    return this.teachers.filter(te => te.name.toLowerCase().includes(keyword));
+                },
+                deleteStudent(s) {
+                    this.triggerConfirm('确认删除？', '将删除该学生所有数据', () => {
+                        this.students = this.students.filter(t => t.id !== s.id);
+                        this.applications = this.applications.filter(a => a.studentName !== s.name);
+                        this.saveStudentsToStorage();
+                        this.saveToStorage();
+                        this.showNotification('学生已删除');
+                    });
+                },
+
+                // ========== 老师管理 ==========
+                openProjectModal() {
+                    this.isEditingProject = false;
+                    this.editingProjectId = null;
+                    this.projectForm = { studentId: '', name: '', ddl: '' };
+                    this.projectStudentSearch = '';
+                    this.isProjectModalOpen = true;
+                },
+                openTeacherModal() {
+                    this.isEditingTeacher = false;
+                    this.editingTeacherId = null;
+                    this.teacherForm = { name: '', password: this.generate6DigitPassword() };
+                    this.teacherSearch = '';
+                    this.isTeacherModalOpen = true;
+                },
+                openManagerPwdModal() {
+                    this.managerPwdForm = { current: '', new: '', confirm: '' };
+                    this.isManagerPwdModalOpen = true;
+                },
+                closeManagerPwdModal() {
+                    this.isManagerPwdModalOpen = false;
+                },
+                saveManagerPassword() {
+                    const cur = (this.managerPwdForm.current || '').trim();
+                    const nw = (this.managerPwdForm.new || '').trim();
+                    const cf = (this.managerPwdForm.confirm || '').trim();
+                    const stored = this.manager && this.manager.password ? this.manager.password : '920101';
+                    if (cur !== stored) return this.showNotification('当前密码不正确', 'error');
+                    if (!nw || nw.length < 4) return this.showNotification('新密码至少4位', 'error');
+                    if (nw !== cf) return this.showNotification('两次输入的新密码不一致', 'error');
+                    this.manager.password = nw;
+                    this.saveManagerToStorage();
+                    this.showNotification('管理人密码已更新');
+                    this.closeManagerPwdModal();
+                },
+                generateTeacherPassword() {
+                    this.teacherForm.password = this.generate6DigitPassword();
+                },
+                saveTeacherForm() {
+                    const { name, password } = this.teacherForm;
+                    if (!name || password.length !== 6) {
+                        this.showNotification('请填写完整信息', 'error');
+                        return;
+                    }
+
+                    if (this.isEditingTeacher) {
+                        const old = this.teachers.find(t => t.id === this.editingTeacherId);
+                        this.teachers = this.teachers.map(t => 
+                            t.id === this.editingTeacherId ? { ...t, name, password } : t
+                        );
+                        if (old.name !== name) {
+                            this.applications.forEach(a => {
+                                a.tasks.forEach(t => {
+                                    if (t.teacher === old.name) t.teacher = name;
+                                });
+                            });
+                        }
+                        this.showNotification('老师信息已更新');
+                    } else {
+                        if (this.teachers.some(t => t.name === name)) {
+                            this.showNotification('老师已存在', 'error');
+                            return;
+                        }
+                        this.teachers.push({ id: Date.now(), name, password });
+                        this.showNotification(`老师 ${name} 添加成功`);
+                    }
+
+                    this.saveTeachersToStorage();
+                    this.saveToStorage();
+                    this.cancelTeacherEdit();
+                },
+                startTeacherEdit(t) {
+                    this.isEditingTeacher = true;
+                    this.editingTeacherId = t.id;
+                    this.teacherForm = { name: t.name, password: t.password };
+                },
+                cancelTeacherEdit() {
+                    this.isEditingTeacher = false;
+                    this.editingTeacherId = null;
+                    this.teacherForm = { name: '', password: this.generate6DigitPassword() };
+                },
+                deleteTeacher(t) {
+                    this.triggerConfirm('确认删除？', '该老师任务将变为未分配', () => {
+                        this.teachers = this.teachers.filter(te => te.id !== t.id);
+                        this.applications.forEach(a => {
+                            a.tasks.forEach(ta => {
+                                if (ta.teacher === t.name) ta.teacher = '';
+                            });
+                        });
+                        this.saveTeachersToStorage();
+                        this.saveToStorage();
+                        this.showNotification('老师已删除');
+                    });
+                },
+
+                // ========== 项目管理 ==========
+                openProjectEditModal(app) {
+                    this.isEditingProject = true;
+                    this.editingProjectId = app.id;
+                    const stu = this.students.find(s => s.name === app.studentName);
+                    this.projectForm = {
+                        studentId: stu ? stu.id : '',
+                        name: app.projectName,
+                        ddl: app.ddl
+                    };
+                    this.projectStudentSearch = stu ? stu.name : '';
+                    this.isProjectModalOpen = true;
+                },
+                closeProjectModal() {
+                    this.isProjectModalOpen = false;
+                    this.isEditingProject = false;
+                    this.editingProjectId = null;
+                    this.projectForm = { studentId: '', name: '', ddl: '' };
+                    this.projectStudentSearch = '';
+                },
+                saveProjectForm() {
+                    this.isEditingProject ? this.updateProject() : this.addProject();
+                },
+                updateProject() {
+                    const stu = this.students.find(s => s.id == this.projectForm.studentId);
+                    if (!stu) return this.showNotification('请选择学生', 'error');
+
+                    this.applications = this.applications.map(a => 
+                        a.id === this.editingProjectId ? {
+                            ...a,
+                            studentName: stu.name,
+                            projectName: this.projectForm.name,
+                            ddl: this.projectForm.ddl
+                        } : a
+                    );
+                    this.saveToStorage();
+                    this.showNotification('项目已更新');
+                    this.closeProjectModal();
+                },
+                deleteProject(app) {
+                    this.triggerConfirm('确认删除项目？', '所有任务和文档将丢失', () => {
+                        this.applications = this.applications.filter(a => a.id !== app.id);
+                        this.saveToStorage();
+                        this.showNotification('项目已删除');
+                    });
+                },
+                addProject() {
+                    const stu = this.students.find(s => s.id == this.projectForm.studentId);
+                    if (!stu) return this.showNotification('请先添加学生', 'error');
+
+                    const id = Date.now();
+                    this.applications.push({
+                        id,
+                        studentName: stu.name,
+                        projectName: this.projectForm.name,
+                        ddl: this.projectForm.ddl,
+                        tasks: [
+                            { id: id+1, type: 'PS', typeName: '个人陈述文书', teacher: '', fileUrl: '', fileName: '', settlement: 0, isSettled: false, voucherUrl: '' },
+                            { id: id+2, type: 'RL', typeName: '推荐信', teacher: '', fileUrl: '', fileName: '', settlement: 0, isSettled: false, voucherUrl: '' },
+                            { id: id+3, type: 'CV', typeName: '简历CV', teacher: '', fileUrl: '', fileName: '', settlement: 0, isSettled: false, voucherUrl: '' }
+                        ]
+                    });
+                    this.saveToStorage();
+                    this.showNotification('项目创建成功');
+                    this.closeProjectModal();
+                },
+
+                // ========== 文件与结算 ==========
+                handleSettlementChange(task, val) {
+                    if (val === 'yes' && !task.voucherUrl) {
+                        this.showNotification('请先上传付款凭证', 'error');
+                        document.getElementById(`voucher-upload-${task.id}`)?.click();
+                        return;
+                    }
+                    task.isSettled = val === 'yes';
+                    this.saveToStorage();
+                    this.showNotification('状态已更新');
+                },
+                handleVoucherUpload(e, task) {
+                    const f = e.target.files[0];
+                    if (!f || !f.type.startsWith('image/')) return this.showNotification('请上传图片', 'error');
+                    task.voucherUrl = URL.createObjectURL(f);
+                    task.isSettled = true;
+                    this.saveToStorage();
+                    this.showNotification('凭证上传成功');
+                },
+                clearVoucher(task) {
+                    task.voucherUrl = '';
+                    task.isSettled = false;
+                    this.saveToStorage();
+                    this.showNotification('凭证已清除');
+                },
+                openVoucherPreview(task, app) {
+                    this.voucherPreviewData = {
+                        url: task.voucherUrl,
+                        studentName: app.studentName,
+                        projectName: app.projectName,
+                        taskTypeName: task.typeName,
+                        teacher: task.teacher || '待分配',
+                        settlement: task.settlement || 0
+                    };
+                    this.isVoucherPreviewOpen = true;
+                },
+                handleFileUpload(e, task) {
+                    const f = e.target.files[0];
+                    if (!f || f.type !== 'application/pdf') return this.showNotification('请上传PDF', 'error');
+                    task.fileName = f.name;
+                    task.fileUrl = URL.createObjectURL(f);
+                    task.isRealFile = true;
+                    this.saveToStorage();
+                    this.showNotification('文件上传成功');
+                },
+                updateTeacher(task, name) {
+                    const matched = this.teachers.find(t => t.name === name.trim());
+                    task.teacher = matched ? matched.name : '';
+                    this.saveToStorage();
+                    this.showNotification(`已分配给 ${matched ? matched.name : '未分配'}`);
+                },
+                openPreview(task, app) {
+                    this.previewData = {
+                        fileName: task.fileName,
+                        studentName: app.studentName,
+                        projectName: app.projectName,
+                        taskTypeName: task.typeName,
+                        teacher: task.teacher || '待分配',
+                        fileUrl: task.fileUrl,
+                        isReal: !!task.isRealFile
+                    };
+                    this.isPreviewOpen = true;
+                },
+
+                // ========== 数据存储 ==========
+                saveToStorage() { localStorage.setItem('elite_studio_apps_v3', JSON.stringify(this.applications)); },
+                saveTeachersToStorage() { localStorage.setItem('elite_studio_teachers_v3', JSON.stringify(this.teachers)); },
+                saveStudentsToStorage() { localStorage.setItem('elite_studio_students_v3', JSON.stringify(this.students)); },
+                saveManagerToStorage() { localStorage.setItem('elite_studio_manager_v1', JSON.stringify(this.manager)); },
+
+
+                // ========== 统计 ==========
+                getUniqueStudentsCount() { return this.students.length; },
+                getUrgentProjectsCount() { return this.applications.filter(a => this.isUrgent(a.ddl)).length; },
+                getDeliveryProgress() {
+                    let total = 0, done = 0;
+                    this.applications.forEach(a => a.tasks.forEach(t => { total++; done += t.fileUrl ? 1 : 0; }));
+                    return `${done}/${total}`;
+                },
+                getTotalSettlement() {
+                    return this.applications.reduce((sum, a) => {
+                        return sum + a.tasks.reduce((s, t) => s + (t.isSettled ? 0 : (Number(t.settlement) || 0)), 0);
+                    }, 0);
+                },
+                getPaidSettlement() {
+                    return this.applications.reduce((sum, a) => {
+                        return sum + a.tasks.reduce((s, t) => s + (t.isSettled ? (Number(t.settlement) || 0) : 0), 0);
+                    }, 0);
+                },
+                getTeacherSettlementSummaries() {
+                    const map = {};
+                    this.teachers.forEach(t => map[t.name] = { total: 0, settledTotal: 0, count: 0 });
+                    this.applications.forEach(a => {
+                        a.tasks.forEach(t => {
+                            if (!t.teacher || !map[t.teacher]) return;
+                            map[t.teacher].count++;
+                            const num = Number(t.settlement) || 0;
+                            t.isSettled ? map[t.teacher].settledTotal += num : map[t.teacher].total += num;
+                        });
+                    });
+                    return Object.entries(map).map(([k, v]) => ({ teacher: k, ...v }));
+                }
+            }
+        }
+    </script>
+</body>
+</html>
