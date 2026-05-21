@@ -1,0 +1,19 @@
+{
+  "name": "coco-studio-server",
+  "version": "1.0.0",
+  "description": "COCO 留学管理后台 - 后端 API 服务",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "@supabase/supabase-js": "^2.49.4"
+  }
+}
