@@ -2,3 +2,6 @@ node_modules/
 .env
 uploads/pdfs/
 uploads/vouchers/
+*.db
+*.db-shm
+*.db-wal
