@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 
 const authRoutes = require('./routes/auth');
 const studentRoutes = require('./routes/students');
@@ -12,6 +13,9 @@ const PORT = process.env.PORT || 3001;
 // 中间件
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
+
+// 静态文件服务
+app.use(express.static(path.join(__dirname, 'public')));
 
 // 路由
 app.use('/api/auth', authRoutes);
