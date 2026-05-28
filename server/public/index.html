@@ -371,7 +371,12 @@
                                             </template>
                                             <!-- 倒计时计算 -->
                                             <div class="text-xs text-slate-500 font-medium">
-                                                剩 <span class="font-bold text-sm" :class="isUrgent(app.ddl) ? 'text-rose-600' : 'text-slate-700'" x-text="getDaysLeft(app.ddl)"></span> 天截止
+                                                <template x-if="getDaysLeft(app.ddl) >= 0">
+                                                    <span>剩 <span class="font-bold text-sm" :class="isUrgent(app.ddl) ? 'text-rose-600' : 'text-slate-700'" x-text="getDaysLeft(app.ddl)"></span> 天截止</span>
+                                                </template>
+                                                <template x-if="getDaysLeft(app.ddl) < 0">
+                                                    <span>超 <span class="font-bold text-sm" :class="isUrgent(app.ddl) ? 'text-rose-600' : 'text-slate-700'" x-text="Math.abs(getDaysLeft(app.ddl))"></span> 天</span>
+                                                </template>
                                             </div>
                                         </div>
                                     </td>
